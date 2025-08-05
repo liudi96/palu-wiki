@@ -74,7 +74,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 		ai := v1.Group("/ai")
 		ai.Use(middleware.JWTAuth(cfg))
 		{
-			ai.POST("/generate", aiHandler.GenerateArticle)
+			ai.POST("/generate", aiHandler.GenerateContent)    // 简单内容生成
+			ai.POST("/article", aiHandler.GenerateArticle)     // 生成并保存文章
 			ai.POST("/articles/:id/regenerate", aiHandler.RegenerateArticleContent)
 			ai.POST("/articles/:id/optimize", aiHandler.OptimizeArticleContent)
 		}

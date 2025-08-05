@@ -49,7 +49,19 @@
       "Bash(chmod:*)",
       "Bash(pg_isready:*)",
       "Bash(HTTP_PROXY= HTTPS_PROXY= curl -s http://localhost:8080/health)",
-      "Bash(env:*)"
+      "Bash(env:*)",
+      "Bash(git commit:*)",
+      "mcp__filesystem-global__read_text_file",
+      "Bash(/opt/homebrew/bin/psql -h localhost -U palu_user -d palu_wiki -c \"UPDATE users SET role=''admin'' WHERE username=''admin'' OR username=''testuser'';\")",
+      "Bash(/usr/local/Cellar/postgresql@15/15.13/bin/psql:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_wait_for",
+      "Bash(npm install:*)",
+      "mcp__playwright__browser_select_option"
     ],
     "deny": []
   },

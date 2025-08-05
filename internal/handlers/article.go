@@ -91,7 +91,11 @@ func (h *ArticleHandler) CreateArticle(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": article})
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "文章创建成功",
+		"data":    article,
+	})
 }
 
 // 更新文章

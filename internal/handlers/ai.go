@@ -29,8 +29,8 @@ func NewAIHandler(db *gorm.DB, aiClient *ai.SparkAIClient) *AIHandler {
 // GenerateArticleRequest AI生成文章请求
 type GenerateArticleRequest struct {
 	Title      string `json:"title" binding:"required"`
-	Topic      string `json:"topic" binding:"required"`
-	CategoryID uint   `json:"category_id" binding:"required"`
+	Topic      string `json:"topic"`           // 可选字段
+	CategoryID uint   `json:"category_id"`     // 可选字段
 }
 
 // GenerateArticle AI生成文章
@@ -48,15 +48,32 @@ func (h *AIHandler) GenerateArticle(c *gin.Context) {
 		return
 	}
 
-	// 验证分类是否存在
-	var category models.Category
-	if err := h.db.First(&category, req.CategoryID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "分类不存在"})
-		return
+	// 设置默认topic（如果未提供）
+	topic := req.Topic
+	if topic == "" {
+		topic = "帕鲁游戏攻略"
+	}
+
+	// 设置默认分类ID（如果未提供，使用第一个可用分类）
+	categoryID := req.CategoryID
+	if categoryID == 0 {
+		var category models.Category
+		if err := h.db.First(&category).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "未找到可用分类"})
+			return
+		}
+		categoryID = category.ID
+	} else {
+		// 验证分类是否存在
+		var category models.Category
+		if err := h.db.First(&category, categoryID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "分类不存在"})
+			return
+		}
 	}
 
 	// 调用AI生成内容
-	aiContent, err := h.aiClient.GenerateArticle(c.Request.Context(), req.Title, req.Topic)
+	aiContent, err := h.aiClient.GenerateArticle(c.Request.Context(), req.Title, topic)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI生成内容失败: " + err.Error()})
 		return
@@ -67,11 +84,11 @@ func (h *AIHandler) GenerateArticle(c *gin.Context) {
 		Title:         aiContent.Title,
 		Content:       aiContent.Content,
 		Summary:       aiContent.Summary,
-		CategoryID:    req.CategoryID,
+		CategoryID:    categoryID,
 		AuthorID:      userID.(uint),
 		Status:        "draft", // AI生成的文章默认为草稿状态
 		IsAIGenerated: true,
-		Tags:          `["` + req.Topic + `", "AI生成", "攻略"]`,
+		Tags:          `["` + topic + `", "AI生成", "攻略"]`,
 	}
 
 	if err := h.db.Create(&article).Error; err != nil {
@@ -83,8 +100,50 @@ func (h *AIHandler) GenerateArticle(c *gin.Context) {
 	h.db.Preload("Author").Preload("Category").First(&article, article.ID)
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "AI文章生成成功",
-		"data":    article,
+		"success": true,
+		"message": "AI文章生成成功", 
+		"data": gin.H{
+			"content": aiContent.Content,
+			"summary": aiContent.Summary,
+		},
+	})
+}
+
+// GenerateContentRequest 简单内容生成请求
+type GenerateContentRequest struct {
+	Title      string `json:"title" binding:"required"`
+	Topic      string `json:"topic"`
+	CategoryID uint   `json:"category_id"`
+}
+
+// GenerateContent 生成内容（不保存为文章）
+func (h *AIHandler) GenerateContent(c *gin.Context) {
+	var req GenerateContentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误: " + err.Error()})
+		return
+	}
+
+	// 设置默认topic
+	topic := req.Topic
+	if topic == "" {
+		topic = "帕鲁游戏攻略"
+	}
+
+	// 调用AI生成内容
+	aiContent, err := h.aiClient.GenerateArticle(c.Request.Context(), req.Title, topic)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI生成内容失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "内容生成成功",
+		"data": gin.H{
+			"content": aiContent.Content,
+			"summary": aiContent.Summary,
+		},
 	})
 }
 

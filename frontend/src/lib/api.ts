@@ -176,6 +176,28 @@ export const articleAPI = {
     const response = await api.get(`/api/v1/articles/${id}`);
     return response.data;
   },
+
+  createArticle: async (data: {
+    title: string;
+    content: string;
+    summary: string;
+    category_id: number;
+    status: string;
+  }) => {
+    const response = await api.post('/api/v1/articles', data);
+    return response.data;
+  },
+};
+
+// AI相关API
+export const aiAPI = {
+  generateContent: async (data: {
+    title: string;
+    category_id?: number;
+  }) => {
+    const response = await api.post('/api/v1/ai/generate', data);
+    return response.data;
+  },
 };
 
 // 分类相关API
@@ -186,4 +208,6 @@ export const categoryAPI = {
   },
 };
 
+// 导出api实例作为apiClient
+export const apiClient = api;
 export default api;
