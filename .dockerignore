@@ -1,0 +1,79 @@
+# Docker构建忽略文件 - 优化构建速度和镜像大小
+
+# Git相关
+.git
+.gitignore
+.gitattributes
+
+# 文档文件
+*.md
+README.md
+CLAUDE.md
+TEST_REPORT.md
+docs/
+
+# 开发工具配置
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志文件
+*.log
+logs/
+app.log
+server.log
+frontend.log
+
+# 测试文件
+*_test.go
+*_test.py
+test_*.py
+comprehensive_auth_test.py
+simple_test.py
+
+# 临时文件
+tmp/
+temp/
+.DS_Store
+Thumbs.db
+
+# 构建产物
+bin/
+dist/
+build/
+
+# 依赖文件（前端）
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# 根目录的node_modules（如果有）
+node_modules/
+
+# 环境配置
+.env
+.env.*
+
+# 数据库文件
+*.db
+*.sqlite*
+dump.rdb
+
+# 上传文件（运行时挂载）
+uploads/
+
+# Docker相关
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# 部署脚本
+deploy.sh
+dev-start.sh
+start.sh
+stop.sh
+
+# 包管理器文件
+package-lock.json
+yarn.lock

@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import UserLayout from '@/components/UserLayout';
 import { articleAPI, type Article } from '@/lib/api';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   DocumentTextIcon,
   SparklesIcon,
@@ -195,12 +197,30 @@ export default function ArticleDetailPage() {
 
           {/* 文章正文 */}
           <div className="px-6 py-8">
-            <div 
-              className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-primary-600 prose-strong:text-gray-900"
-              dangerouslySetInnerHTML={{
-                __html: article.content.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              }}
-            />
+            <div className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-primary-600 prose-strong:text-gray-900 prose-img:rounded-lg prose-img:shadow-md">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  img: ({ node, ...props }) => (
+                    <img 
+                      {...props} 
+                      className="rounded-lg shadow-md max-w-full h-auto"
+                      loading="lazy"
+                    />
+                  ),
+                  a: ({ node, ...props }) => (
+                    <a 
+                      {...props} 
+                      className="text-primary-600 hover:text-primary-800 underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  )
+                }}
+              >
+                {article.content}
+              </ReactMarkdown>
+            </div>
           </div>
         </article>
 

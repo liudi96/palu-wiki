@@ -61,7 +61,11 @@
       "mcp__playwright__browser_handle_dialog",
       "mcp__playwright__browser_wait_for",
       "Bash(npm install:*)",
-      "mcp__playwright__browser_select_option"
+      "mcp__playwright__browser_select_option",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(npm run dev:*)",
+      "mcp__filesystem-global__directory_tree"
     ],
     "deny": []
   },

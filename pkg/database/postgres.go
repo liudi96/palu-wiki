@@ -50,5 +50,6 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Category{},
 		&models.Article{},
 		&models.Comment{},
+		&models.File{},
 	)
 }

@@ -1,0 +1,91 @@
+# 开发环境Docker Compose配置 - 用于本地测试
+version: '3.8'
+
+services:
+  # 只启动必要的服务进行本地测试
+  postgres:
+    image: postgres:15-alpine
+    container_name: palu-wiki-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: palu_wiki
+      POSTGRES_USER: palu_user
+      POSTGRES_PASSWORD: palu_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - palu-network-dev
+
+  redis:
+    image: redis:7-alpine
+    container_name: palu-wiki-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - palu-network-dev
+
+  backend:
+    build: .
+    container_name: palu-wiki-backend-dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: palu_user
+      DB_PASSWORD: palu_password
+      DB_NAME: palu_wiki
+      DB_SSLMODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      SERVER_PORT: 8080
+      SERVER_MODE: debug  # 开发模式
+      JWT_SECRET: dev-jwt-secret-key-not-for-production
+      # AI配置从环境变量读取
+      SPARK_APP_ID: ${SPARK_APP_ID:-}
+      SPARK_API_KEY: ${SPARK_API_KEY:-}
+      SPARK_API_SECRET: ${SPARK_API_SECRET:-}
+      SPARK_DOMAIN: lite
+      SPARK_BASE_URL: wss://spark-api.xf-yun.com/v1.1/chat
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - palu-network-dev
+
+  frontend:
+    build: ./frontend
+    container_name: palu-wiki-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_API_URL: http://localhost:8080  # 本地开发时直接访问后端
+    depends_on:
+      - backend
+    networks:
+      - palu-network-dev
+
+networks:
+  palu-network-dev:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local

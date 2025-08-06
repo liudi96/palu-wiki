@@ -15,6 +15,14 @@ import (
 	"palu-wiki/pkg/redis"
 )
 
+// min 返回两个数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func main() {
 	// 加载配置
 	cfg := config.LoadConfig()
@@ -38,12 +46,21 @@ func main() {
 	}
 
 	// 初始化AI客户端
-	sparkConfig := ai.LoadSparkConfigFromEnv()
+	sparkConfig := &ai.SparkAIConfig{
+		AppID:     cfg.AI.SparkAppID,
+		APIKey:    cfg.AI.SparkAPIKey,
+		APISecret: cfg.AI.SparkAPISecret,
+		Domain:    cfg.AI.SparkDomain,
+		BaseURL:   cfg.AI.SparkBaseURL,
+	}
 	aiClient, err := ai.NewSparkAIClient(sparkConfig)
 	if err != nil {
 		log.Printf("Failed to initialize AI client: %v", err)
 		log.Printf("AI功能将不可用，请检查环境变量配置")
+		log.Printf("当前配置：AppID=%s, APIKey=%s...", sparkConfig.AppID, sparkConfig.APIKey[:min(10, len(sparkConfig.APIKey))])
 		// AI客户端初始化失败不退出程序，但AI功能不可用
+	} else {
+		log.Printf("AI客户端初始化成功，使用星火AI")
 	}
 
 	// 创建AI处理器

@@ -80,6 +80,19 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 			ai.POST("/articles/:id/optimize", aiHandler.OptimizeArticleContent)
 		}
 
+		// 文件上传相关路由（需要认证）
+		upload := v1.Group("/upload")
+		upload.Use(middleware.JWTAuth(cfg))
+		{
+			uploadHandler := NewUploadHandler(db)
+			upload.POST("/image", uploadHandler.UploadImage)  // 上传图片
+			upload.POST("/file", uploadHandler.UploadFile)    // 上传文件
+			upload.GET("/files", uploadHandler.GetFiles)      // 获取文件列表
+			upload.GET("/files/:id", uploadHandler.GetFile)   // 获取文件详情
+			upload.PUT("/files/:id", uploadHandler.UpdateFile) // 更新文件信息
+			upload.DELETE("/files/:id", uploadHandler.DeleteFile) // 删除文件
+		}
+
 		// 管理后台路由（需要管理员权限）
 		admin := v1.Group("/admin")
 		admin.Use(middleware.JWTAuth(cfg), middleware.RequireAdmin())
@@ -97,6 +110,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 			admin.PUT("/articles/:id/status", adminHandler.UpdateArticleStatus)
 		}
 	}
+
+	// 静态文件服务
+	router.Static("/uploads", "./uploads")
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {

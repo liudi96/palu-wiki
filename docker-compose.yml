@@ -1,0 +1,130 @@
+version: '3.8'
+
+# Docker Compose编排文件 - 学习容器编排
+services:
+  # PostgreSQL数据库服务
+  postgres:
+    image: postgres:15-alpine
+    container_name: palu-wiki-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: palu_wiki
+      POSTGRES_USER: palu_user
+      POSTGRES_PASSWORD: palu_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U palu_user -d palu_wiki"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - palu-network
+
+  # Redis缓存服务（可选）
+  redis:
+    image: redis:7-alpine
+    container_name: palu-wiki-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - palu-network
+
+  # Go后端服务
+  backend:
+    build: .
+    container_name: palu-wiki-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # 数据库配置
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: palu_user
+      DB_PASSWORD: palu_password
+      DB_NAME: palu_wiki
+      DB_SSLMODE: disable
+      # Redis配置
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      # 服务器配置
+      SERVER_PORT: 8080
+      SERVER_MODE: release
+      # JWT配置
+      JWT_SECRET: your-strong-jwt-secret-key-change-in-production
+      # AI配置（需要你自己设置）
+      SPARK_APP_ID: ${SPARK_APP_ID}
+      SPARK_API_KEY: ${SPARK_API_KEY}
+      SPARK_API_SECRET: ${SPARK_API_SECRET}
+      SPARK_DOMAIN: lite
+      SPARK_BASE_URL: wss://spark-api.xf-yun.com/v1.1/chat
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - palu-network
+
+  # Next.js前端服务
+  frontend:
+    build: ./frontend
+    container_name: palu-wiki-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: 1
+      # API接口地址（容器内部通信）
+      NEXT_PUBLIC_API_URL: http://backend:8080
+    depends_on:
+      - backend
+    networks:
+      - palu-network
+
+  # Nginx反向代理（可选，用于生产环境）
+  nginx:
+    image: nginx:alpine
+    container_name: palu-wiki-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - palu-network
+
+# 定义网络
+networks:
+  palu-network:
+    driver: bridge
+
+# 定义数据卷，用于数据持久化
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

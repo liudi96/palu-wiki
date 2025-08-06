@@ -208,6 +208,67 @@ export const categoryAPI = {
   },
 };
 
+// 文件上传相关API
+export const uploadAPI = {
+  uploadImage: async (file: File, description?: string) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    if (description) {
+      formData.append('description', description);
+    }
+    
+    const response = await api.post('/api/v1/upload/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  uploadFile: async (file: File, description?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (description) {
+      formData.append('description', description);
+    }
+    
+    const response = await api.post('/api/v1/upload/file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  getFiles: async (params?: {
+    page?: number;
+    page_size?: number;
+    type?: string;
+    uploader_id?: string;
+  }) => {
+    const response = await api.get('/api/v1/upload/files', { params });
+    return response.data;
+  },
+
+  getFile: async (id: number) => {
+    const response = await api.get(`/api/v1/upload/files/${id}`);
+    return response.data;
+  },
+
+  updateFile: async (id: number, description: string) => {
+    const formData = new FormData();
+    formData.append('description', description);
+    
+    const response = await api.put(`/api/v1/upload/files/${id}`, formData);
+    return response.data;
+  },
+
+  deleteFile: async (id: number) => {
+    const response = await api.delete(`/api/v1/upload/files/${id}`);
+    return response.data;
+  },
+};
+
 // 导出api实例作为apiClient
 export const apiClient = api;
 export default api;

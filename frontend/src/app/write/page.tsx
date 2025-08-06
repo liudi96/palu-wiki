@@ -6,6 +6,8 @@ import Cookies from 'js-cookie';
 import UserLayout from '@/components/UserLayout';
 import { categoryAPI, articleAPI, aiAPI } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import ImageUpload from '@/components/upload/ImageUpload';
+import ImageManager from '@/components/upload/ImageManager';
 
 interface Category {
   id: number;
@@ -25,6 +27,7 @@ export default function WritePage() {
     status: 'draft' as 'draft' | 'published'
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showImageManager, setShowImageManager] = useState(false);
 
   useEffect(() => {
     // 检查登录状态 - 使用Cookie而不是localStorage
@@ -131,6 +134,21 @@ export default function WritePage() {
     }
   };
 
+  const handleInsertImage = (imageUrl: string) => {
+    // 获取图片文件名（从URL中提取）
+    const fileName = imageUrl.split('/').pop()?.split('.')[0] || 'image';
+    const markdown = `![${fileName}](${imageUrl})\n\n`;
+    
+    // 在当前光标位置插入Markdown图片代码
+    setFormData(prev => ({
+      ...prev,
+      content: prev.content + markdown
+    }));
+    
+    toast.success('图片已插入到文章中');
+    setShowImageManager(false);
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -194,15 +212,25 @@ export default function WritePage() {
                 <label htmlFor="content" className="block text-sm font-medium text-gray-700">
                   文章内容 *
                 </label>
-                <button
-                  type="button"
-                  onClick={handleAIGenerate}
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm rounded-md hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <span>🤖</span>
-                  {isLoading ? '生成中...' : 'AI智能生成'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowImageManager(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm rounded-md hover:from-green-700 hover:to-emerald-700 flex items-center gap-2"
+                  >
+                    <span>🖼️</span>
+                    插入图片
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAIGenerate}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm rounded-md hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <span>🤖</span>
+                    {isLoading ? '生成中...' : 'AI智能生成'}
+                  </button>
+                </div>
               </div>
               <textarea
                 id="content"
@@ -293,6 +321,34 @@ export default function WritePage() {
             </div>
           </form>
         </div>
+
+        {/* 图片管理器模态框 */}
+        {showImageManager && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">图片管理器</h2>
+                  <button
+                    onClick={() => setShowImageManager(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <ImageManager 
+                  onSelectImage={handleInsertImage}
+                  showUpload={true}
+                  showSelect={true}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 写作提示 */}
         <div className="mt-8 bg-blue-50 rounded-lg p-6">
