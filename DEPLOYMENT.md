@@ -1,123 +1,67 @@
-# 🚀 帕鲁攻略网站部署指南
+# 🚀 Palu Wiki 腾讯云部署指南
 
-这是一个完整的Docker化部署指南，让你学习从开发到生产的完整流程。
+这是一个完整的自动化部署指南，包含从服务器准备到应用上线的全套脚本和文档。
 
-## 📋 部署前准备
+## 🚀 快速部署
 
-### 1. 环境要求
-- **服务器**: Linux系统（推荐Ubuntu 20.04+）
-- **Docker**: 20.10+
-- **Docker Compose**: 2.0+
-- **内存**: 最少2GB，推荐4GB
-- **存储**: 最少20GB可用空间
+### 准备工作
+1. **腾讯云服务器** - Ubuntu 20.04+ 或 CentOS 8+，建议配置：2核4GB内存，40GB硬盘
+2. **域名** - 已注册并解析到服务器IP的域名
+3. **SSH访问** - 确保可以SSH登录到服务器
 
-### 2. 腾讯云服务器配置
+### 一键部署流程
+
+#### 1. 环境检查
 ```bash
-# 更新系统
-sudo apt update && sudo apt upgrade -y
+# 上传脚本到服务器
+scp -r scripts/ user@your-server:/tmp/
 
-# 安装Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+# 登录服务器
+ssh user@your-server
 
-# 安装Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+# 进入脚本目录
+cd /tmp/scripts
 
-# 将用户添加到docker组
-sudo usermod -aG docker $USER
+# 运行环境检查
+./server_check.sh
 ```
 
-### 3. 防火墙配置
+#### 2. 环境搭建
 ```bash
-# 开放必要端口
-sudo ufw allow 22    # SSH
-sudo ufw allow 80    # HTTP
-sudo ufw allow 443   # HTTPS
-sudo ufw allow 8080  # 后端API（可选，用于调试）
-sudo ufw allow 3001  # 前端服务（可选，用于调试）
-sudo ufw enable
+# 一键安装所有必需软件和配置
+./server_setup.sh
+
+# 注意：如果脚本添加了用户到docker组，需要重新登录
+exit
+ssh user@your-server
 ```
 
-## 🛠️ 本地测试部署
-
-### 1. 环境配置
+#### 3. 数据库初始化
 ```bash
-# 复制环境变量文件
-cp .env.production .env
+cd /opt/palu-wiki
+./db_init.sh
 
-# 编辑配置文件，填写真实的配置
-nano .env
+# 记录输出的数据库密码和管理员密码
 ```
 
-**重要**: 必须填写星火AI的配置信息：
-- `SPARK_APP_ID`: 你的App ID
-- `SPARK_API_KEY`: 你的API Key  
-- `SPARK_API_SECRET`: 你的API Secret
-
-### 2. 开发环境测试
+#### 4. 安全加固
 ```bash
-# 启动开发环境（用于本地测试）
-./dev-start.sh
+# 执行安全加固脚本
+./security_hardening.sh
 
-# 或者手动启动
-docker-compose -f docker-compose.dev.yml up --build
+# 注意：这会修改SSH配置，确保您有SSH密钥访问权限
 ```
 
-### 3. 生产环境测试
+#### 5. SSL证书配置
 ```bash
-# 启动生产环境
+# 配置域名和SSL证书
+./ssl_setup.sh yourdomain.com admin@yourdomain.com
+```
+
+#### 6. 部署应用
+```bash
+# 部署Palu Wiki应用
 ./deploy.sh
-
-# 或者手动启动
-docker-compose up --build -d
-```
-
-### 4. 验证部署
-```bash
-# 检查服务状态
-docker-compose ps
-
-# 检查健康状态
-curl http://localhost:8080/health
-
-# 查看日志
-docker-compose logs -f
-```
-
-## 🌐 腾讯云生产部署
-
-### 1. 代码部署
-```bash
-# 在服务器上克隆代码
-git clone <你的仓库地址>
-cd palu-wiki
-
-# 配置环境变量
-cp .env.production .env
-nano .env  # 填写真实配置
-```
-
-### 2. 一键部署
-```bash
-# 运行部署脚本
-./deploy.sh
-```
-
-### 3. 域名配置（可选）
-如果你有域名，可以配置Nginx反向代理：
-
-```bash
-# 修改docker-compose.yml中的nginx配置
-# 启用nginx服务
-docker-compose up -d nginx
-```
-
-### 4. SSL证书配置（可选）
-```bash
-# 使用Let's Encrypt免费证书
-sudo apt install certbot
-certbot --nginx -d your-domain.com
 ```
 
 ## 📊 服务监控
