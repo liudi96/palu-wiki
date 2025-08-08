@@ -23,7 +23,7 @@ func NewArticleHandler(db *gorm.DB) *ArticleHandler {
 // 获取文章列表
 func (h *ArticleHandler) GetArticles(c *gin.Context) {
 	var articles []models.Article
-	
+
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset := (page - 1) * limit
@@ -40,8 +40,8 @@ func (h *ArticleHandler) GetArticles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": articles,
-		"page": page,
+		"data":  articles,
+		"page":  page,
 		"limit": limit,
 	})
 }
@@ -164,10 +164,6 @@ func (h *ArticleHandler) DeleteArticle(c *gin.Context) {
 // 搜索文章
 func (h *ArticleHandler) SearchArticles(c *gin.Context) {
 	keyword := c.Query("q")
-	if keyword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "搜索关键词不能为空"})
-		return
-	}
 
 	// 分页参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -178,35 +174,39 @@ func (h *ArticleHandler) SearchArticles(c *gin.Context) {
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 10
 	}
-	
+
 	// 搜索条件
 	categoryID := c.Query("category_id")
 	authorID := c.Query("author_id")
 	isAIGenerated := c.Query("is_ai_generated")
 	status := c.DefaultQuery("status", "published")
-	
+
 	// 排序方式
 	sortBy := c.DefaultQuery("sort", "created_at")
 	order := c.DefaultQuery("order", "desc")
-	
+
 	// 构建查询
-	query := h.db.Preload("Author").Preload("Category").
-		Where("title ILIKE ? OR content ILIKE ? OR summary ILIKE ?", 
-			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+	query := h.db.Preload("Author").Preload("Category")
 	
+	// 如果有关键词，则进行文本搜索
+	if keyword != "" {
+		query = query.Where("title ILIKE ? OR content ILIKE ? OR summary ILIKE ?",
+			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+	}
+
 	// 添加过滤条件
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
-	
+
 	if categoryID != "" {
 		query = query.Where("category_id = ?", categoryID)
 	}
-	
+
 	if authorID != "" {
 		query = query.Where("author_id = ?", authorID)
 	}
-	
+
 	if isAIGenerated != "" {
 		if isAIGenerated == "true" {
 			query = query.Where("is_ai_generated = ?", true)
@@ -214,34 +214,34 @@ func (h *ArticleHandler) SearchArticles(c *gin.Context) {
 			query = query.Where("is_ai_generated = ?", false)
 		}
 	}
-	
+
 	// 计算总数
 	var total int64
 	if err := query.Model(&models.Article{}).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "统计搜索结果失败"})
 		return
 	}
-	
+
 	// 分页查询
 	var articles []models.Article
 	offset := (page - 1) * pageSize
-	
+
 	// 排序
 	orderBy := fmt.Sprintf("%s %s", sortBy, strings.ToUpper(order))
 	result := query.Order(orderBy).Limit(pageSize).Offset(offset).Find(&articles)
-	
+
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "搜索失败"})
 		return
 	}
-	
+
 	// 返回分页结果
 	c.JSON(http.StatusOK, gin.H{
 		"data": articles,
 		"pagination": gin.H{
-			"page":       page,
-			"page_size":  pageSize,
-			"total":      total,
+			"page":        page,
+			"page_size":   pageSize,
+			"total":       total,
 			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
 		},
 		"search_info": gin.H{

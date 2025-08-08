@@ -18,8 +18,8 @@ type Comment struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联
-	User     User      `json:"user" gorm:"foreignKey:UserID"`
-	Article  Article   `json:"article" gorm:"foreignKey:ArticleID"`
-	Parent   *Comment  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
-	Replies  []Comment `json:"replies,omitempty" gorm:"foreignKey:ParentID"`
+	User    User      `json:"user" gorm:"foreignKey:UserID"`
+	Article Article   `json:"article" gorm:"foreignKey:ArticleID"`
+	Parent  *Comment  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
+	Replies []Comment `json:"replies,omitempty" gorm:"foreignKey:ParentID"`
 }

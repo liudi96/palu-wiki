@@ -12,6 +12,9 @@ import (
 	"palu-wiki/internal/models"
 )
 
+// 全局数据库实例
+var DB *gorm.DB
+
 func NewPostgresConnection(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		cfg.Database.Host,
@@ -35,6 +38,9 @@ func NewPostgresConnection(cfg *config.Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	// 设置全局DB实例
+	DB = db
+
 	// 自动迁移
 	if err := AutoMigrate(db); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
@@ -50,5 +56,6 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Category{},
 		&models.Article{},
 		&models.Comment{},
+		&models.File{},
 	)
 }

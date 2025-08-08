@@ -1,0 +1,218 @@
+version: '3.8'
+
+# 生产环境Docker Compose编排文件
+# 优化后的生产环境配置，包含性能优化、安全配置和监控
+
+services:
+  # PostgreSQL数据库服务 - 生产优化
+  db:
+    image: postgres:15-alpine
+    container_name: palu-wiki-db-prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-palu_wiki}
+      POSTGRES_USER: ${DB_USER:-palu_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-palu_user} -d ${DB_NAME:-palu_wiki}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend
+    # 安全配置：不暴露端口到宿主机
+    # ports: 
+    #   - "5432:5432"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis缓存服务 - 生产优化
+  redis:
+    image: redis:7-alpine
+    container_name: palu-wiki-redis-prod
+    restart: always
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data_prod:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: >
+      sh -c "
+        if [ -n '$$REDIS_PASSWORD' ]; then
+          redis-server /usr/local/etc/redis/redis.conf --requirepass $$REDIS_PASSWORD --appendonly yes
+        else
+          redis-server /usr/local/etc/redis/redis.conf --appendonly yes
+        fi
+      "
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Go后端服务 - 生产优化
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: palu-wiki-backend:latest
+    container_name: palu-wiki-backend-prod
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # 数据库配置
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_SSLMODE: disable
+      # Redis配置  
+      REDIS_ADDR: redis:6379
+      # 服务器配置
+      SERVER_PORT: 8080
+      SERVER_MODE: release
+      # 生产环境特定配置
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Next.js前端服务 - 生产优化
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: palu-wiki-frontend:latest
+    container_name: palu-wiki-frontend-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: 1
+      # API接口地址（通过nginx代理）
+      NEXT_PUBLIC_API_URL: ${DOMAIN:-http://localhost}/api
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - frontend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Nginx反向代理 - 生产配置
+  nginx:
+    image: nginx:alpine
+    container_name: palu-wiki-nginx-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./uploads:/usr/share/nginx/html/uploads:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - frontend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# 网络配置 - 分层隔离
+networks:
+  # 前端网络
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  # 后端网络  
+  backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+# 数据卷 - 生产环境持久化
+volumes:
+  postgres_data_prod:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/palu-wiki/postgres_data
+  redis_data_prod:
+    driver: local
+    driver_opts:
+      type: none  
+      o: bind
+      device: /opt/palu-wiki/redis_data

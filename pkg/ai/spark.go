@@ -120,7 +120,7 @@ func (c *SparkAIClient) generateAuthURL() (string, error) {
 	signature := base64.StdEncoding.EncodeToString(h.Sum(nil))
 
 	// 构建Authorization header
-	authorizationOrigin := fmt.Sprintf(`api_key="%s", algorithm="hmac-sha256", headers="host date request-line", signature="%s"`, 
+	authorizationOrigin := fmt.Sprintf(`api_key="%s", algorithm="hmac-sha256", headers="host date request-line", signature="%s"`,
 		c.config.APIKey, signature)
 	authorization := base64.StdEncoding.EncodeToString([]byte(authorizationOrigin))
 
@@ -146,7 +146,7 @@ func min(a, b int) int {
 func (c *SparkAIClient) GenerateContent(ctx context.Context, prompt string) (string, error) {
 	// 如果配置不完整，返回模拟内容
 	if c.config.AppID == "" || c.config.APIKey == "" || c.config.APISecret == "" {
-		return fmt.Sprintf("这是AI生成的关于'%s'的模拟内容。\n\n请注意：当前为演示模式，实际使用需要配置讯飞星火API密钥。", 
+		return fmt.Sprintf("这是AI生成的关于'%s'的模拟内容。\n\n请注意：当前为演示模式，实际使用需要配置讯飞星火API密钥。",
 			prompt[:min(50, len(prompt))]), nil
 	}
 
@@ -158,7 +158,7 @@ func (c *SparkAIClient) GenerateContent(ctx context.Context, prompt string) (str
 func (c *SparkAIClient) callSparkAPI(ctx context.Context, prompt string) (string, error) {
 	// 由于网络代理问题，暂时返回模拟的AI内容，展示系统架构完整性
 	// 真实部署时，此处会调用讯飞星火WebSocket API
-	
+
 	mockContent := fmt.Sprintf(`# %s
 
 ## 简介
@@ -234,7 +234,7 @@ func (c *SparkAIClient) callSparkAPI(ctx context.Context, prompt string) (string
 通过掌握这些捕捉技巧，相信各位训练师都能在《幻兽帕鲁》的世界中收获满满！
 
 ---
-*本攻略由AI智能生成，实际游戏中请以官方信息为准。*`, 
+*本攻略由AI智能生成，实际游戏中请以官方信息为准。*`,
 		strings.Split(prompt, "：")[0]) // 使用标题的第一部分
 
 	return mockContent, nil

@@ -3,50 +3,84 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 用中文回答我
-每次都用审视的目光，仔细看我输入的潜在问题，你要指出我的问题，并给出明显在我思考框架之外的建议
-如果你觉得我说的太离谱了，你就骂回来，帮我瞬间清醒
-我的网络使用了代理，服务器：端口是127.0.0.1:15236，如果你发现网络问题可以从这个角度帮我检查
+每次都用审视的目光，仔细看我输入的潜在问题，你要指出我的问题，并给出明显在我思考框架之外的建议。
+如果你觉得我说的太离谱了，你就骂回来，帮我瞬间清醒。
+开发必须遵循TDO(测试驱动开发)的方法论。
 
-## MCP配置策略
-### 配置原则
-- **避免重复**：全局filesystem已覆盖所有文件访问，无需项目级重复配置
-- **功能分层**：通用工具全局配置，特殊需求才用项目级配置
-- **定期清理**：删除被覆盖的重复配置，保持配置简洁
-- **优先全局**：Claude Code自动合并配置，全局优先级更高
+## 外部大脑
+计划、项目进展和系统设计等细节(在memory-bank文件夹下阅读)
+## 🚀 快速开发
+
+### 一键启动
+```bash
+./start.sh              # 启动完整应用（后端+前端+数据库）
+```
+
+### 单独启动
+```bash
+# 后端开发
+make dev                 # go run cmd/server/main.go (端口8080)
+
+# 前端开发  
+cd frontend && npm run dev  # 开发服务器 (端口3001)
+```
+
+### 代码检查
+```bash
+make fmt && make lint    # Go代码格式化和检查
+cd frontend && npm run lint  # TypeScript检查
+```
+## 云服务器
 
 
+## 🌐 网络配置
+外网走代理：127.0.0.1:15236
+本地直连
 
-# 🎮 幻兽帕鲁攻略网站项目规划
+## 🏗️ 核心架构
 
-## 产品定位
-AIGC驱动的攻略+社区+工具综合平台
+### 关键文件位置
+- **入口**: `cmd/server/main.go` - 程序启动点
+- **路由**: `internal/handlers/routes.go:11` - API路由配置
+- **数据库**: `pkg/database/postgres.go:15` - 数据库连接
+- **AI集成**: `pkg/ai/spark.go` - 星火AI客户端
+- **前端API**: `frontend/src/lib/api.ts` - 统一API调用
+- **前端布局**: `frontend/src/app/layout.tsx` - 根组件
 
-## 技术架构
-- **后端**: Go + Gin + GORM + PostgreSQL + Redis + Elasticsearch
-- **前端**: Next.js
-- **AI**: 通义千问/智谱AI
-- **架构**: 单体→微服务渐进式演进
+### 数据流
+```
+前端 → api.ts → Gin Router → 中间件 → Handler → GORM → PostgreSQL
+```
 
-## 四阶段开发计划
+### 权限体系
+- **普通用户**: 读取文章、注册登录
+- **编辑用户**: 创建和编辑自己的文章  
+- **管理员**: 管理所有用户和文章，访问管理后台(`/admin`)
 
-### 阶段一：MVP (2-3月)
-- 用户系统 + 攻略CRUD + 基础搜索 + 管理后台 + AI生成
+## ✅ 测试要求
 
-### 阶段二：社区 (3-4月) 
-- 评论互动 + 投稿审核 + 收藏系统 + 全文搜索优化
-- 目标：DAU>1000，投稿>50篇/周
+功能开发完成后必须进行端到端测试：
+```bash
+# API测试
+curl http://localhost:8080/health
 
-### 阶段三：工具 (4-5月)
-- 帕鲁计算器 + 服务器监控 + 微服务重构 + 会员体系
+# 使用现有测试脚本
+python3 create_test_data.py
+```
 
-### 阶段四：变现 (6月+)
-- 付费内容 + 高级会员 + API服务 + 移动端
+## 🔧 常见问题
 
-## 核心功能
-1. **智能攻略**: AI辅助写作、质量评分、版本管理
-2. **社区互动**: 评论、投稿、收藏、等级系统  
-3. **实用工具**: 配置计算器、地图标记、装备对比
-4. **商业化**: 会员订阅、付费内容、企业服务
+- 端口被占用：检查8080(后端)和3001(前端)端口
+- 数据库连接失败：确认PostgreSQL服务运行状态
+- 网络请求超时：检查代理设置127.0.0.1:15236
+- AI生成失败：检查星火API密钥配置
 
-## 关键风险
-- 内容版权、AI成本控制、大厂竞争、技术债务
+### 讯飞星火AI配置
+SPARK_APP_ID=8ddf9157
+SPARK_API_KEY=59b8dde668da384b876e5f3640ce9197
+SPARK_API_SECRET=MzliZmY5ODBjYzQyODBjMjQ0MTY1Yzdi
+SPARK_DOMAIN=lite
+SPARK_BASE_URL=wss://spark-api.xf-yun.com/v1.1/chat
+
+
+---
