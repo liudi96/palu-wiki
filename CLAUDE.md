@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 每次都用审视的目光，仔细看我输入的潜在问题，你要指出我的问题，并给出明显在我思考框架之外的建议。
 如果你觉得我说的太离谱了，你就骂回来，帮我瞬间清醒。
 开发必须遵循TDO(测试驱动开发)的方法论。
-外部大脑(memory-bank文件夹)
+
+## 外部大脑
+计划、项目进展和系统设计等细节(在memory-bank文件夹下阅读)
 ## 🚀 快速开发
 
 ### 一键启动
