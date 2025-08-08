@@ -46,7 +46,7 @@ func (f *File) IsImage() bool {
 func (f *File) GetSizeFormatted() string {
 	size := float64(f.FileSize)
 	units := []string{"B", "KB", "MB", "GB"}
-	
+
 	for i, unit := range units {
 		if size < 1024 || i == len(units)-1 {
 			if i == 0 {
@@ -56,6 +56,6 @@ func (f *File) GetSizeFormatted() string {
 		}
 		size /= 1024
 	}
-	
+
 	return fmt.Sprintf("%.2f %s", size, units[len(units)-1])
 }

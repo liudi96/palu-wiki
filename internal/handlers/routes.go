@@ -28,7 +28,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 	router.Use(middleware.InputValidation())
 	router.Use(middleware.AntiBot())
 	router.Use(middleware.ErrorLogger())
-	
+
 	// 全局限流
 	router.Use(middleware.DefaultRateLimit())
 
@@ -59,7 +59,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 			articles.GET("", articleHandler.GetArticles)
 			articles.GET("/:id", articleHandler.GetArticle)
 			articles.GET("/search", articleHandler.SearchArticles)
-			
+
 			// 需要认证的接口
 			articlesAuth := articles.Group("")
 			articlesAuth.Use(middleware.JWTAuth(cfg))
@@ -78,7 +78,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 			// 公开接口
 			categories.GET("", categoryHandler.GetCategories)
 			categories.GET("/:id/articles", categoryHandler.GetCategoryArticles)
-			
+
 			// 需要管理员权限的接口
 			categoriesAdmin := categories.Group("")
 			categoriesAdmin.Use(middleware.JWTAuth(cfg), middleware.RequireAdmin())
@@ -93,8 +93,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 		ai := v1.Group("/ai")
 		ai.Use(middleware.JWTAuth(cfg))
 		{
-			ai.POST("/generate", aiHandler.GenerateContent)    // 简单内容生成
-			ai.POST("/article", aiHandler.GenerateArticle)     // 生成并保存文章
+			ai.POST("/generate", aiHandler.GenerateContent) // 简单内容生成
+			ai.POST("/article", aiHandler.GenerateArticle)  // 生成并保存文章
 			ai.POST("/articles/:id/regenerate", aiHandler.RegenerateArticleContent)
 			ai.POST("/articles/:id/optimize", aiHandler.OptimizeArticleContent)
 		}
@@ -104,11 +104,11 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 		upload.Use(middleware.JWTAuth(cfg))
 		{
 			uploadHandler := NewUploadHandler(db)
-			upload.POST("/image", uploadHandler.UploadImage)  // 上传图片
-			upload.POST("/file", uploadHandler.UploadFile)    // 上传文件
-			upload.GET("/files", uploadHandler.GetFiles)      // 获取文件列表
-			upload.GET("/files/:id", uploadHandler.GetFile)   // 获取文件详情
-			upload.PUT("/files/:id", uploadHandler.UpdateFile) // 更新文件信息
+			upload.POST("/image", uploadHandler.UploadImage)      // 上传图片
+			upload.POST("/file", uploadHandler.UploadFile)        // 上传文件
+			upload.GET("/files", uploadHandler.GetFiles)          // 获取文件列表
+			upload.GET("/files/:id", uploadHandler.GetFile)       // 获取文件详情
+			upload.PUT("/files/:id", uploadHandler.UpdateFile)    // 更新文件信息
 			upload.DELETE("/files/:id", uploadHandler.DeleteFile) // 删除文件
 		}
 
@@ -119,11 +119,11 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 			// 仪表板
 			admin.GET("/dashboard", adminHandler.Dashboard)
 			admin.GET("/system", adminHandler.GetSystemInfo)
-			
+
 			// 用户管理
 			admin.GET("/users", adminHandler.GetAllUsers)
 			admin.PUT("/users/:id/status", adminHandler.UpdateUserStatus)
-			
+
 			// 文章管理
 			admin.GET("/articles", adminHandler.GetAllArticles)
 			admin.PUT("/articles/:id/status", adminHandler.UpdateArticleStatus)
@@ -136,7 +136,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status": "ok",
+			"status":  "ok",
 			"message": "Palu Wiki API is running",
 		})
 	})
@@ -152,7 +152,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 		}
 
 		// 检查Redis连接
-		redisStatus := "ok" 
+		redisStatus := "ok"
 		var redisError string
 		if redisClient := redis.GetClient(); redisClient != nil {
 			if err := redisClient.Ping(c.Request.Context()).Err(); err != nil {
@@ -164,16 +164,16 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 		}
 
 		c.JSON(200, gin.H{
-			"status": "ok",
+			"status":    "ok",
 			"timestamp": time.Now().Unix(),
 			"services": gin.H{
 				"database": gin.H{
 					"status": dbStatus,
-					"error": dbError,
+					"error":  dbError,
 				},
 				"redis": gin.H{
 					"status": redisStatus,
-					"error": redisError,
+					"error":  redisError,
 				},
 			},
 		})
@@ -191,19 +191,19 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config, aiHandler 
 			stats := sqlDB.Stats()
 			dbStats = gin.H{
 				"open_connections": stats.OpenConnections,
-				"in_use": stats.InUse,
-				"idle": stats.Idle,
+				"in_use":           stats.InUse,
+				"idle":             stats.Idle,
 			}
 		}
 
 		c.JSON(200, gin.H{
 			"memory": gin.H{
-				"alloc_mb": float64(m.Alloc) / 1024 / 1024,
+				"alloc_mb":       float64(m.Alloc) / 1024 / 1024,
 				"total_alloc_mb": float64(m.TotalAlloc) / 1024 / 1024,
-				"sys_mb": float64(m.Sys) / 1024 / 1024,
+				"sys_mb":         float64(m.Sys) / 1024 / 1024,
 			},
-			"goroutines": runtime.NumGoroutine(),
-			"database": dbStats,
+			"goroutines":     runtime.NumGoroutine(),
+			"database":       dbStats,
 			"uptime_seconds": time.Since(startTime).Seconds(),
 		})
 	})

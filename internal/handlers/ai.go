@@ -29,8 +29,8 @@ func NewAIHandler(db *gorm.DB, aiClient *ai.SparkAIClient) *AIHandler {
 // GenerateArticleRequest AI生成文章请求
 type GenerateArticleRequest struct {
 	Title      string `json:"title" binding:"required"`
-	Topic      string `json:"topic"`           // 可选字段
-	CategoryID uint   `json:"category_id"`     // 可选字段
+	Topic      string `json:"topic"`       // 可选字段
+	CategoryID uint   `json:"category_id"` // 可选字段
 }
 
 // GenerateArticle AI生成文章
@@ -101,7 +101,7 @@ func (h *AIHandler) GenerateArticle(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
-		"message": "AI文章生成成功", 
+		"message": "AI文章生成成功",
 		"data": gin.H{
 			"content": aiContent.Content,
 			"summary": aiContent.Summary,

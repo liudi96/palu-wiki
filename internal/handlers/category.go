@@ -20,7 +20,7 @@ func NewCategoryHandler(db *gorm.DB) *CategoryHandler {
 // 获取分类列表
 func (h *CategoryHandler) GetCategories(c *gin.Context) {
 	var categories []models.Category
-	
+
 	result := h.db.Where("status = ?", "active").
 		Order("sort ASC, created_at DESC").
 		Find(&categories)

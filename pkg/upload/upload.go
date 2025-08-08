@@ -38,16 +38,16 @@ func DefaultConfig() *UploadConfig {
 
 // FileInfo 上传文件信息
 type FileInfo struct {
-	FileName    string `json:"file_name"`
-	StoredName  string `json:"stored_name"`
-	FileSize    int64  `json:"file_size"`
-	FileType    string `json:"file_type"`
-	MimeType    string `json:"mime_type"`
-	FilePath    string `json:"file_path"`
-	FileURL     string `json:"file_url"`
-	Width       int    `json:"width"`
-	Height      int    `json:"height"`
-	IsImage     bool   `json:"is_image"`
+	FileName   string `json:"file_name"`
+	StoredName string `json:"stored_name"`
+	FileSize   int64  `json:"file_size"`
+	FileType   string `json:"file_type"`
+	MimeType   string `json:"mime_type"`
+	FilePath   string `json:"file_path"`
+	FileURL    string `json:"file_url"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	IsImage    bool   `json:"is_image"`
 }
 
 // UploadService 文件上传服务
@@ -95,11 +95,11 @@ func (s *UploadService) ValidateFile(header *multipart.FileHeader) error {
 func (s *UploadService) generateStoredName(fileName string) string {
 	ext := filepath.Ext(fileName)
 	name := strings.TrimSuffix(fileName, ext)
-	
+
 	// 使用文件名和当前时间生成MD5
 	hash := md5.New()
 	hash.Write([]byte(fmt.Sprintf("%s_%d", name, time.Now().UnixNano())))
-	
+
 	return fmt.Sprintf("%x%s", hash.Sum(nil), ext)
 }
 
@@ -138,21 +138,21 @@ func (s *UploadService) ensureDir(dirPath string) error {
 // getUploadPath 获取上传路径
 func (s *UploadService) getUploadPath() (string, string, error) {
 	baseDir := s.config.UploadDir
-	
+
 	var subDir string
 	if s.config.CreateSubDirs {
 		// 按日期创建子目录: uploads/2024/01/02/
 		now := time.Now()
 		subDir = now.Format("2006/01/02")
 	}
-	
+
 	fullPath := filepath.Join(baseDir, subDir)
-	
+
 	// 确保目录存在
 	if err := s.ensureDir(fullPath); err != nil {
 		return "", "", fmt.Errorf("创建上传目录失败: %v", err)
 	}
-	
+
 	return fullPath, subDir, nil
 }
 

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -33,7 +32,7 @@ func NewRateLimiter(maxReq int, window time.Duration) *RateLimiter {
 
 	// 启动清理协程
 	go rl.cleanup()
-	
+
 	return rl
 }
 
@@ -41,7 +40,7 @@ func NewRateLimiter(maxReq int, window time.Duration) *RateLimiter {
 func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		clientIP := c.ClientIP()
-		
+
 		if !rl.Allow(clientIP) {
 			c.JSON(http.StatusTooManyRequests, gin.H{
 				"error": "请求过于频繁，请稍后再试",
@@ -50,7 +49,7 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		c.Next()
 	}
 }
@@ -58,9 +57,9 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 func (rl *RateLimiter) Allow(clientIP string) bool {
 	rl.mutex.Lock()
 	defer rl.mutex.Unlock()
-	
+
 	now := time.Now()
-	
+
 	client, exists := rl.requests[clientIP]
 	if !exists {
 		client = &ClientInfo{
@@ -70,7 +69,7 @@ func (rl *RateLimiter) Allow(clientIP string) bool {
 		rl.requests[clientIP] = client
 		return true
 	}
-	
+
 	// 清理过期请求
 	validRequests := []time.Time{}
 	for _, req := range client.requests {
@@ -78,14 +77,14 @@ func (rl *RateLimiter) Allow(clientIP string) bool {
 			validRequests = append(validRequests, req)
 		}
 	}
-	
+
 	client.requests = validRequests
-	
+
 	// 检查是否超过限制
 	if len(client.requests) >= rl.maxReq {
 		return false
 	}
-	
+
 	// 添加新请求
 	client.requests = append(client.requests, now)
 	return true
@@ -94,18 +93,18 @@ func (rl *RateLimiter) Allow(clientIP string) bool {
 func (rl *RateLimiter) cleanup() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		rl.mutex.Lock()
 		now := time.Now()
-		
+
 		for ip, client := range rl.requests {
 			// 如果客户端在窗口时间内没有请求，删除记录
 			if now.Sub(client.lastReset) > rl.window*2 {
 				delete(rl.requests, ip)
 			}
 		}
-		
+
 		rl.mutex.Unlock()
 	}
 }
@@ -115,13 +114,13 @@ func DefaultRateLimit() gin.HandlerFunc {
 	// 从环境变量获取限流配置
 	maxReqStr := os.Getenv("RATE_LIMIT_RPM")
 	maxReq := 100 // 默认每分钟100个请求
-	
+
 	if maxReqStr != "" {
 		if parsed, err := strconv.Atoi(maxReqStr); err == nil {
 			maxReq = parsed
 		}
 	}
-	
+
 	limiter := NewRateLimiter(maxReq, time.Minute)
 	return limiter.Middleware()
 }
