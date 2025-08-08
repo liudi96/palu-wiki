@@ -28,16 +28,12 @@ cd frontend && npm run dev  # 开发服务器 (端口3001)
 make fmt && make lint    # Go代码格式化和检查
 cd frontend && npm run lint  # TypeScript检查
 ```
+## 云服务器
+
 
 ## 🌐 网络配置
-所有网络请求使用代理：127.0.0.1:15236
-```bash
-# Go模块下载
-HTTP_PROXY=http://127.0.0.1:15236 HTTPS_PROXY=http://127.0.0.1:15236 go get <package>
-
-# npm安装
-HTTP_PROXY=http://127.0.0.1:15236 HTTPS_PROXY=http://127.0.0.1:15236 npm install
-```
+外网走代理：127.0.0.1:15236
+本地直连
 
 ## 🏗️ 核心架构
 
@@ -67,9 +63,7 @@ HTTP_PROXY=http://127.0.0.1:15236 HTTPS_PROXY=http://127.0.0.1:15236 npm install
 curl http://localhost:8080/health
 
 # 使用现有测试脚本
-python3 test_api.py
-python3 test_article_create.py
-python3 test_admin_only.py
+python3 create_test_data.py
 ```
 
 ## 🔧 常见问题
@@ -78,5 +72,13 @@ python3 test_admin_only.py
 - 数据库连接失败：确认PostgreSQL服务运行状态
 - 网络请求超时：检查代理设置127.0.0.1:15236
 - AI生成失败：检查星火API密钥配置
+
+### 讯飞星火AI配置
+SPARK_APP_ID=8ddf9157
+SPARK_API_KEY=59b8dde668da384b876e5f3640ce9197
+SPARK_API_SECRET=MzliZmY5ODBjYzQyODBjMjQ0MTY1Yzdi
+SPARK_DOMAIN=lite
+SPARK_BASE_URL=wss://spark-api.xf-yun.com/v1.1/chat
+
 
 ---
