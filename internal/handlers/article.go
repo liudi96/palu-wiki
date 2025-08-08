@@ -164,10 +164,6 @@ func (h *ArticleHandler) DeleteArticle(c *gin.Context) {
 // 搜索文章
 func (h *ArticleHandler) SearchArticles(c *gin.Context) {
 	keyword := c.Query("q")
-	if keyword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "搜索关键词不能为空"})
-		return
-	}
 
 	// 分页参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -190,9 +186,13 @@ func (h *ArticleHandler) SearchArticles(c *gin.Context) {
 	order := c.DefaultQuery("order", "desc")
 
 	// 构建查询
-	query := h.db.Preload("Author").Preload("Category").
-		Where("title ILIKE ? OR content ILIKE ? OR summary ILIKE ?",
+	query := h.db.Preload("Author").Preload("Category")
+	
+	// 如果有关键词，则进行文本搜索
+	if keyword != "" {
+		query = query.Where("title ILIKE ? OR content ILIKE ? OR summary ILIKE ?",
 			"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+	}
 
 	// 添加过滤条件
 	if status != "" {

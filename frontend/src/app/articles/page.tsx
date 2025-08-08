@@ -33,7 +33,7 @@ export default function ArticlesPage() {
       const params: any = {
         page: currentPage,
         page_size: 12,
-        status: 'published', // 只显示已发布的文章
+        status: 'published',
         sort: sortBy,
         order: sortOrder,
       };
