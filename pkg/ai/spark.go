@@ -29,6 +29,9 @@ type SparkAIClient struct {
 	config *SparkAIConfig
 }
 
+// 确保SparkAIClient实现AIProvider接口
+var _ AIProvider = (*SparkAIClient)(nil)
+
 // NewSparkAIClient 创建星火AI客户端
 func NewSparkAIClient(config *SparkAIConfig) (*SparkAIClient, error) {
 	if config.AppID == "" || config.APIKey == "" || config.APISecret == "" {
@@ -282,7 +285,7 @@ func (c *SparkAIClient) GenerateArticle(ctx context.Context, title, topic string
 5. 内容真实、准确、无编造；适合新手与进阶玩家
 6. 用词客观简洁，避免废话
 
-仅输出以下JSON（不要任何额外文字）：
+仅输出以下JSON格式的数据，不要包含任何markdown代码块标记，不要任何额外说明文字：
 {
   "title": "文章标题",
   "summary": "文章摘要（100-200字）",
@@ -295,9 +298,18 @@ func (c *SparkAIClient) GenerateArticle(ctx context.Context, title, topic string
 		return nil, err
 	}
 
+	// 清理内容，移除可能的markdown代码块标记
+	cleanedContent := content
+	// 移除开头的```json或```
+	cleanedContent = strings.TrimPrefix(cleanedContent, "```json")
+	cleanedContent = strings.TrimPrefix(cleanedContent, "```")
+	// 移除结尾的```
+	cleanedContent = strings.TrimSuffix(cleanedContent, "```")
+	cleanedContent = strings.TrimSpace(cleanedContent)
+
 	// 优先尝试解析为JSON结构
 	var parsed ArticleContent
-	if err := json.Unmarshal([]byte(strings.TrimSpace(content)), &parsed); err == nil && parsed.Content != "" {
+	if err := json.Unmarshal([]byte(cleanedContent), &parsed); err == nil && parsed.Content != "" {
 		if parsed.Title == "" {
 			parsed.Title = title
 		}
@@ -316,15 +328,15 @@ func (c *SparkAIClient) GenerateArticle(ctx context.Context, title, topic string
 	}, nil
 }
 
-// ArticleContent AI生成的文章内容
-type ArticleContent struct {
-	Title   string   `json:"title"`
-	Summary string   `json:"summary"`
-	Content string   `json:"content"`
-	Tags    []string `json:"tags"`
+// LoadSparkConfigFromEnv 从环境变量加载星火AI配置
+// getEnv 获取环境变量，如果不存在则返回默认值
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
-// LoadSparkConfigFromEnv 从环境变量加载星火AI配置
 func LoadSparkConfigFromEnv() *SparkAIConfig {
 	return &SparkAIConfig{
 		AppID:     os.Getenv("SPARK_APP_ID"),
@@ -333,4 +345,29 @@ func LoadSparkConfigFromEnv() *SparkAIConfig {
 		Domain:    os.Getenv("SPARK_DOMAIN"),
 		BaseURL:   os.Getenv("SPARK_BASE_URL"),
 	}
+}
+
+// GetProviderName 获取提供商名称
+func (c *SparkAIClient) GetProviderName() string {
+	return "spark"
+}
+
+// IsAvailable 检查提供商是否可用
+func (c *SparkAIClient) IsAvailable(ctx context.Context) bool {
+	// 简单检查配置是否完整
+	return c.config != nil && 
+		   c.config.AppID != "" && 
+		   c.config.APIKey != "" && 
+		   c.config.APISecret != ""
+}
+
+// GetQuotaInfo 获取配额信息
+func (c *SparkAIClient) GetQuotaInfo(ctx context.Context) (*QuotaInfo, error) {
+	// 星火API通常不提供配额查询接口，返回默认信息
+	return &QuotaInfo{
+		Provider:       "spark",
+		TotalTokens:    -1, // -1 表示未知
+		UsedTokens:     -1,
+		RemainingQuota: 1.0, // 假设可用
+	}, nil
 }

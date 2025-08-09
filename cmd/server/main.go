@@ -45,7 +45,40 @@ func main() {
 		defer rdb.Close()
 	}
 
-	// 初始化AI客户端
+	// 初始化AI管理器
+	aiManager := ai.NewAIManager(ai.StrategyPriority)
+	
+	// 注册DeepSeek客户端（优先级1）
+	deepSeekConfig := ai.LoadDeepSeekConfigFromEnv()
+	if deepSeekConfig.APIKey != "" {
+		deepSeekClient := ai.NewDeepSeekClient(deepSeekConfig)
+		aiManager.RegisterProvider(deepSeekClient, ai.ProviderConfig{
+			Name:     "deepseek",
+			Priority: 1,
+			Weight:   100,
+			Enabled:  true,
+		})
+		log.Printf("DeepSeek客户端注册成功")
+	} else {
+		log.Printf("DeepSeek API Key未配置，跳过注册")
+	}
+	
+	// 注册通义千问客户端（优先级2）
+	qwenConfig := ai.LoadQwenConfigFromEnv()
+	if qwenConfig.APIKey != "" {
+		qwenClient := ai.NewQwenClient(qwenConfig)
+		aiManager.RegisterProvider(qwenClient, ai.ProviderConfig{
+			Name:     "qwen",
+			Priority: 2,
+			Weight:   80,
+			Enabled:  true,
+		})
+		log.Printf("通义千问客户端注册成功")
+	} else {
+		log.Printf("通义千问 API Key未配置，跳过注册")
+	}
+	
+	// 注册星火AI客户端（优先级3，兜底）
 	sparkConfig := &ai.SparkAIConfig{
 		AppID:     cfg.AI.SparkAppID,
 		APIKey:    cfg.AI.SparkAPIKey,
@@ -53,18 +86,21 @@ func main() {
 		Domain:    cfg.AI.SparkDomain,
 		BaseURL:   cfg.AI.SparkBaseURL,
 	}
-	aiClient, err := ai.NewSparkAIClient(sparkConfig)
+	sparkClient, err := ai.NewSparkAIClient(sparkConfig)
 	if err != nil {
-		log.Printf("Failed to initialize AI client: %v", err)
-		log.Printf("AI功能将不可用，请检查环境变量配置")
-		log.Printf("当前配置：AppID=%s, APIKey=%s...", sparkConfig.AppID, sparkConfig.APIKey[:min(10, len(sparkConfig.APIKey))])
-		// AI客户端初始化失败不退出程序，但AI功能不可用
+		log.Printf("Failed to initialize Spark AI client: %v", err)
 	} else {
-		log.Printf("AI客户端初始化成功，使用星火AI")
+		aiManager.RegisterProvider(sparkClient, ai.ProviderConfig{
+			Name:     "spark",
+			Priority: 3,
+			Weight:   60,
+			Enabled:  true,
+		})
+		log.Printf("星火AI客户端注册成功")
 	}
 
 	// 创建AI处理器
-	aiHandler := handlers.NewAIHandler(db, aiClient)
+	aiHandler := handlers.NewAIHandler(db, aiManager)
 
 	// 创建Gin路由器
 	router := gin.New()

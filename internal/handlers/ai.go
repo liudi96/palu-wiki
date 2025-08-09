@@ -14,15 +14,15 @@ import (
 
 // AIHandler AI相关处理器
 type AIHandler struct {
-	db       *gorm.DB
-	aiClient *ai.SparkAIClient
+	db        *gorm.DB
+	aiManager *ai.AIManager
 }
 
 // NewAIHandler 创建AI处理器
-func NewAIHandler(db *gorm.DB, aiClient *ai.SparkAIClient) *AIHandler {
+func NewAIHandler(db *gorm.DB, aiManager *ai.AIManager) *AIHandler {
 	return &AIHandler{
-		db:       db,
-		aiClient: aiClient,
+		db:        db,
+		aiManager: aiManager,
 	}
 }
 
@@ -73,7 +73,7 @@ func (h *AIHandler) GenerateArticle(c *gin.Context) {
 	}
 
 	// 调用AI生成内容
-	aiContent, err := h.aiClient.GenerateArticle(c.Request.Context(), req.Title, topic)
+	aiContent, err := h.aiManager.GenerateArticle(c.Request.Context(), req.Title, topic)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI生成内容失败: " + err.Error()})
 		return
@@ -131,7 +131,7 @@ func (h *AIHandler) GenerateContent(c *gin.Context) {
 	}
 
 	// 调用AI生成内容
-	aiContent, err := h.aiClient.GenerateArticle(c.Request.Context(), req.Title, topic)
+	aiContent, err := h.aiManager.GenerateArticle(c.Request.Context(), req.Title, topic)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI生成内容失败: " + err.Error()})
 		return
@@ -178,7 +178,7 @@ func (h *AIHandler) RegenerateArticleContent(c *gin.Context) {
 
 	// 重新生成内容
 	topic := c.DefaultQuery("topic", "帕鲁攻略")
-	aiContent, err := h.aiClient.GenerateArticle(c.Request.Context(), article.Title, topic)
+	aiContent, err := h.aiManager.GenerateArticle(c.Request.Context(), article.Title, topic)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI重新生成内容失败: " + err.Error()})
 		return
@@ -245,7 +245,7 @@ func (h *AIHandler) OptimizeArticleContent(c *gin.Context) {
 
 请直接返回优化后的文章内容：`, article.Title, article.Content)
 
-	optimizedContent, err := h.aiClient.GenerateContent(c.Request.Context(), optimizePrompt)
+	optimizedContent, err := h.aiManager.GenerateContent(c.Request.Context(), optimizePrompt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI优化内容失败: " + err.Error()})
 		return
