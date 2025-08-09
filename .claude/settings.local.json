@@ -79,7 +79,14 @@
       "Bash(HTTP_PROXY= HTTPS_PROXY= curl -X GET \"http://localhost:8080/api/v1/articles/search?status=published&page=1&page_size=12\")",
       "Bash(HTTP_PROXY= HTTPS_PROXY= curl -X GET \"http://localhost:8080/api/v1/articles/search?status=published&category_id=1&page=1&page_size=12\")",
       "Bash(git add:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "mcp__serena__create_text_file",
+      "mcp__filesystem-global__list_directory",
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__list_memories",
+      "mcp__serena__find_symbol",
+      "mcp__serena__insert_before_symbol",
+      "mcp__serena__insert_after_symbol"
     ],
     "deny": []
   },

@@ -5,11 +5,14 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // SparkAIConfig 星火AI配置
@@ -142,121 +145,144 @@ func min(a, b int) int {
 	return b
 }
 
+// maskString 掩盖敏感字符串
+func maskString(s string) string {
+	if len(s) <= 8 {
+		return strings.Repeat("*", len(s))
+	}
+	return s[:4] + strings.Repeat("*", len(s)-8) + s[len(s)-4:]
+}
+
 // GenerateContent 生成内容
 func (c *SparkAIClient) GenerateContent(ctx context.Context, prompt string) (string, error) {
-	// 如果配置不完整，返回模拟内容
+	// 检查配置完整性，不允许降级
 	if c.config.AppID == "" || c.config.APIKey == "" || c.config.APISecret == "" {
-		return fmt.Sprintf("这是AI生成的关于'%s'的模拟内容。\n\n请注意：当前为演示模式，实际使用需要配置讯飞星火API密钥。",
-			prompt[:min(50, len(prompt))]), nil
+		return "", fmt.Errorf("讯飞星火AI配置不完整：AppID=%s, APIKey=%s, APISecret=%s",
+			c.config.AppID, maskString(c.config.APIKey), maskString(c.config.APISecret))
 	}
 
-	// 实现真实的WebSocket API调用
+	// 直接调用真实API，不使用任何降级逻辑
 	return c.callSparkAPI(ctx, prompt)
 }
 
 // callSparkAPI 调用星火AI WebSocket API
 func (c *SparkAIClient) callSparkAPI(ctx context.Context, prompt string) (string, error) {
-	// 由于网络代理问题，暂时返回模拟的AI内容，展示系统架构完整性
-	// 真实部署时，此处会调用讯飞星火WebSocket API
+	// 生成认证URL
+	authURL, err := c.generateAuthURL()
+	if err != nil {
+		return "", fmt.Errorf("生成认证URL失败: %v", err)
+	}
 
-	mockContent := fmt.Sprintf(`# %s
+	// 建立WebSocket连接（启用压缩与超时）
+	dialer := websocket.Dialer{
+		HandshakeTimeout:  15 * time.Second,
+		EnableCompression: true,
+		ReadBufferSize:    4096,
+		WriteBufferSize:   4096,
+	}
 
-## 简介
-《幻兽帕鲁》是一款开放世界生存制作游戏，玩家需要在这个充满神奇生物的世界中生存和探索。捕捉帕鲁是游戏的核心玩法之一。
+	conn, _, err := dialer.DialContext(ctx, authURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("WebSocket连接失败: %v", err)
+	}
+	defer conn.Close()
 
-## 捕捉准备
+	// 构建请求消息
+	request := SparkRequest{
+		Header: struct {
+			AppID string `json:"app_id"`
+			UID   string `json:"uid,omitempty"`
+		}{
+			AppID: c.config.AppID,
+			UID:   "palu-wiki-user",
+		},
+		Parameter: struct {
+			Chat struct {
+				Domain      string  `json:"domain"`
+				Temperature float64 `json:"temperature,omitempty"`
+				MaxTokens   int     `json:"max_tokens,omitempty"`
+			} `json:"chat"`
+		}{
+			Chat: struct {
+				Domain      string  `json:"domain"`
+				Temperature float64 `json:"temperature,omitempty"`
+				MaxTokens   int     `json:"max_tokens,omitempty"`
+			}{
+				Domain:      c.config.Domain,
+				Temperature: 0.7,
+				MaxTokens:   4096,
+			},
+		},
+		Payload: struct {
+			Message struct {
+				Text []SparkMessage `json:"text"`
+			} `json:"message"`
+		}{
+			Message: struct {
+				Text []SparkMessage `json:"text"`
+			}{
+				Text: []SparkMessage{
+					{Role: "system", Content: "你是一名资深游戏攻略写手，需输出结构化、详实、可执行的中文Markdown内容。"},
+					{Role: "user", Content: prompt},
+				},
+			},
+		},
+	}
 
-### 1. 选择合适的帕鲁球
-- **普通帕鲁球**：适合捕捉1-10级的低级帕鲁
-- **超级帕鲁球**：适合捕捉11-30级的中级帕鲁  
-- **究极帕鲁球**：适合捕捉31级以上的高级帕鲁
+	// 发送请求
+	if err := conn.WriteJSON(request); err != nil {
+		return "", fmt.Errorf("发送请求失败: %v", err)
+	}
 
-### 2. 必备工具准备
-- 帕鲁球（根据目标帕鲁等级选择）
-- 治疗药水（防止意外死亡）
-- 充足的食物补给
+	// 读取流式响应，直到状态为2
+	var fullContent strings.Builder
+	// 设置读超时，避免无限等待
+	_ = conn.SetReadDeadline(time.Now().Add(180 * time.Second))
 
-## 捕捉技巧
+	for {
+		var response SparkResponse
+		if err := conn.ReadJSON(&response); err != nil {
+			return "", fmt.Errorf("读取响应失败: %v", err)
+		}
 
-### 1. 削弱帕鲁血量
-使用攻击技能将目标帕鲁的血量降至红血状态（约20%%以下），但切记不要击杀。血量越低，捕捉成功率越高。
+		if response.Header.Code != 0 {
+			return "", fmt.Errorf("API错误: %s (代码: %d)", response.Header.Message, response.Header.Code)
+		}
 
-### 2. 利用状态异常
-- **冰冻效果**：大幅提高捕捉成功率，推荐使用冰系帕鲁技能
-- **麻痹效果**：防止目标逃跑，电系技能可造成此效果
-- **睡眠效果**：最佳状态异常，几乎可保证捕捉成功
+		for _, piece := range response.Payload.Choices.Text {
+			fullContent.WriteString(piece.Content)
+		}
 
-### 3. 背后偷袭
-从帕鲁背后投掷帕鲁球可获得额外的成功率加成，建议先观察目标行动规律。
+		if response.Payload.Choices.Status == 2 || response.Header.Status == 2 {
+			break
+		}
+	}
 
-### 4. 时机选择
-- 夜晚捕捉成功率更高
-- 帕鲁进食或休息时是最佳时机
-- 避免在帕鲁攻击状态下投掷
+	result := fullContent.String()
+	if result == "" {
+		return "", fmt.Errorf("星火AI返回空内容，请检查API配置与Domain/BaseURL是否匹配")
+	}
 
-## 高级技巧
-
-### 1. 连锁捕捉
-连续成功捕捉同种帕鲁可提高后续捕捉成功率，建议批量捕捉。
-
-### 2. 环境利用
-- 利用地形困住帕鲁
-- 在狭窄空间内捕捉可防止逃跑
-- 水中的帕鲁移动较慢，更容易捕捉
-
-### 3. 团队协作
-多人合作时，一人负责削弱血量，另一人负责投掷帕鲁球，效率更高。
-
-## 注意事项
-
-1. **保持安全距离**：某些帕鲁攻击力极强，避免过度接近
-2. **准备充足**：多携带不同类型的帕鲁球
-3. **耐心等待**：不要急于求成，观察是捕捉成功的关键
-4. **等级匹配**：避免挑战等级过高的帕鲁
-
-## 推荐捕捉顺序
-
-### 新手期（1-10级）
-1. 小羊驼 - 基础劳动力
-2. 粉色猫 - 治疗辅助  
-3. 小火龙 - 战斗伙伴
-
-### 进阶期（11-30级）  
-1. 企鹅骑士 - 冰系攻击
-2. 雷鸣鸟 - 飞行坐骑
-3. 岩石巨人 - 建造专家
-
-### 高级期（31级以上）
-1. 传说级帕鲁 - 顶级战力
-2. 稀有变异种 - 收集价值
-3. Boss级帕鲁 - 终极挑战
-
-通过掌握这些捕捉技巧，相信各位训练师都能在《幻兽帕鲁》的世界中收获满满！
-
----
-*本攻略由AI智能生成，实际游戏中请以官方信息为准。*`,
-		strings.Split(prompt, "：")[0]) // 使用标题的第一部分
-
-	return mockContent, nil
+	return result, nil
 }
 
 // GenerateArticle 生成攻略文章
 func (c *SparkAIClient) GenerateArticle(ctx context.Context, title, topic string) (*ArticleContent, error) {
 	// 构建专门的攻略生成提示词
-	prompt := fmt.Sprintf(`请为《幻兽帕鲁》游戏写一篇攻略文章。
+	prompt := fmt.Sprintf(`请为《幻兽帕鲁》游戏写一篇高质量攻略文章。
 
 标题：%s
 主题：%s
 
-要求：
-1. 文章结构清晰，包含标题、摘要、正文
-2. 正文要有详细的步骤说明和实用技巧
-3. 使用Markdown格式，包含适当的标题层级
-4. 内容要实用、准确，适合新手和进阶玩家
-5. 字数在800-1500字之间
-6. 包含相关的游戏标签
+写作要求（务必严格遵循）：
+1. 采用Markdown格式，包含 H1 标题、目录、分级小节、列表与表格（如有必要）
+2. 正文需详尽且可执行，包含步骤、注意事项、技巧与常见错误
+3. 先给出100-200字的摘要
+4. 文章长度不少于1200字
+5. 内容真实、准确、无编造；适合新手与进阶玩家
+6. 用词客观简洁，避免废话
 
-请按以下JSON格式返回：
+仅输出以下JSON（不要任何额外文字）：
 {
   "title": "文章标题",
   "summary": "文章摘要（100-200字）",
@@ -269,7 +295,19 @@ func (c *SparkAIClient) GenerateArticle(ctx context.Context, title, topic string
 		return nil, err
 	}
 
-	// 这里可以添加JSON解析逻辑，暂时先返回原始内容
+	// 优先尝试解析为JSON结构
+	var parsed ArticleContent
+	if err := json.Unmarshal([]byte(strings.TrimSpace(content)), &parsed); err == nil && parsed.Content != "" {
+		if parsed.Title == "" {
+			parsed.Title = title
+		}
+		if len(parsed.Tags) == 0 {
+			parsed.Tags = []string{topic, "攻略", "新手指南"}
+		}
+		return &parsed, nil
+	}
+
+	// 回退：返回原始内容
 	return &ArticleContent{
 		Title:   title,
 		Summary: fmt.Sprintf("关于%s的攻略文章", topic),

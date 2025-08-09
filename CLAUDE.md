@@ -81,6 +81,7 @@ SPARK_API_KEY=59b8dde668da384b876e5f3640ce9197
 SPARK_API_SECRET=MzliZmY5ODBjYzQyODBjMjQ0MTY1Yzdi
 SPARK_DOMAIN=lite
 SPARK_BASE_URL=wss://spark-api.xf-yun.com/v1.1/chat
+APIPassword=XXzWPpKKBotSkcyvOqZi:eFiNavykMLGhNzLswDBN
 
 
 ---
