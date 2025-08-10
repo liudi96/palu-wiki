@@ -80,3 +80,11 @@ dump.rdb
 # Backup files
 *.bak
 *.backup
+
+# Coverage reports
+coverage.html
+*.coverage
+
+# Redundant directories (prevent recreation)
+palu-wiki-backend/
+palu-wiki-frontend/
